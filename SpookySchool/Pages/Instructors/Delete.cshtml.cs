@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using SpookySchool.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using SpookySchool.Data;
-using SpookySchool.Models;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace SpookySchool.Pages.Courses
+namespace SpookySchool.Pages.Instructors
 {
     public class DeleteModel : PageModel
     {
@@ -20,23 +17,18 @@ namespace SpookySchool.Pages.Courses
         }
 
         [BindProperty]
-        public Course Course { get; set; }
+        public Instructor Instructor { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            Course = await _context.Courses
-       .AsNoTracking()
-       .Include(c => c.Department)
-       .FirstOrDefaultAsync(m => m.CourseID == id);
             if (id == null)
             {
                 return NotFound();
             }
 
-            Course = await _context.Courses
-                .Include(c => c.Department).FirstOrDefaultAsync(m => m.CourseID == id);
+            Instructor = await _context.Instructors.FirstOrDefaultAsync(m => m.ID == id);
 
-            if (Course == null)
+            if (Instructor == null)
             {
                 return NotFound();
             }
@@ -50,14 +42,23 @@ namespace SpookySchool.Pages.Courses
                 return NotFound();
             }
 
-            Course = await _context.Courses.FindAsync(id);
+            Instructor instructor = await _context.Instructors
+                .Include(i => i.Courses)
+                .SingleAsync(i => i.ID == id);
 
-            if (Course != null)
+            if (instructor == null)
             {
-                _context.Courses.Remove(Course);
-                await _context.SaveChangesAsync();
+                return RedirectToPage("./Index");
             }
 
+            var departments = await _context.Departments
+                .Where(d => d.InstructorID == id)
+                .ToListAsync();
+            departments.ForEach(d => d.InstructorID = null);
+
+            _context.Instructors.Remove(instructor);
+
+            await _context.SaveChangesAsync();
             return RedirectToPage("./Index");
         }
     }

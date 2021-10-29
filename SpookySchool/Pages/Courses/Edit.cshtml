@@ -1,45 +1,71 @@
-@page
-@model SpookySchool.Pages.Courses.EditModel
+using SpookySchool.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
-@{
-    ViewData["Title"] = "Edit";
-}
+namespace SpookySchool.Pages.Courses
+{
+    public class EditModel : DepartmentNamePageModel
+    {
+        private readonly SpookySchool.Data.SchoolContext _context;
 
-<h1>Edit</h1>
+        public EditModel(SpookySchool.Data.SchoolContext context)
+        {
+            _context = context;
+        }
 
-<h4>Course</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="Course.CourseID" />
-            <div class="form-group">
-                <label asp-for="Course.Title" class="control-label"></label>
-                <input asp-for="Course.Title" class="form-control" />
-                <span asp-validation-for="Course.Title" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Course.Credits" class="control-label"></label>
-                <input asp-for="Course.Credits" class="form-control" />
-                <span asp-validation-for="Course.Credits" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Course.DepartmentID" class="control-label"></label>
-                <select asp-for="Course.DepartmentID" class="form-control" asp-items="ViewBag.DepartmentID"></select>
-                <span asp-validation-for="Course.DepartmentID" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
-    </div>
-</div>
+        [BindProperty]
+        public Course Course { get; set; }
 
-<div>
-    <a asp-page="./Index">Back to List</a>
-</div>
+        public async Task<IActionResult>
+    OnGetAsync(int? id)
+    {
+    if (id == null)
+    {
+    return NotFound();
+    }
 
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}
+    Course = await _context.Courses
+    .Include(c => c.Department).FirstOrDefaultAsync(m => m.CourseID == id);
+
+    if (Course == null)
+    {
+    return NotFound();
+    }
+
+    // Select current DepartmentID.
+    PopulateDepartmentsDropDownList(_context, Course.DepartmentID);
+    return Page();
+    }
+
+    public async Task<IActionResult>
+        OnPostAsync(int? id)
+        {
+        if (id == null)
+        {
+        return NotFound();
+        }
+
+        var courseToUpdate = await _context.Courses.FindAsync(id);
+
+        if (courseToUpdate == null)
+        {
+        return NotFound();
+        }
+
+        if (await TryUpdateModelAsync<Course>
+            (
+            courseToUpdate,
+            "course",   // Prefix for form value.
+            c => c.Credits, c => c.DepartmentID, c => c.Title))
+            {
+            await _context.SaveChangesAsync();
+            return RedirectToPage("./Index");
+            }
+
+            // Select DepartmentID if TryUpdateModelAsync fails.
+            PopulateDepartmentsDropDownList(_context, courseToUpdate.DepartmentID);
+            return Page();
+            }
+            }
+            }
